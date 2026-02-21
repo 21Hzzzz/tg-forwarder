@@ -1,0 +1,23 @@
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ===== Virtual Environment =====
+.venv/
+
+# ===== Environment Variables =====
+.env
+
+# ===== Runtime Files =====
+logs/
+*.log
+*.session
+
+# ===== VS Code (可选) =====
+.vscode/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
