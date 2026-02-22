@@ -5,9 +5,9 @@ import httpx
 from telethon import TelegramClient, events
 from telethon.errors import UsernameInvalidError, UsernameNotOccupiedError
 
-from config import Config, load_config
-from format import build_message
-from push import build_pushplus_payload, pushplus_send
+from .config import load_config
+from .format import build_message
+from .push import build_pushplus_payload, pushplus_send
 
 async def main() -> None:
     try:

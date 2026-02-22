@@ -1,9 +1,9 @@
 import httpx
 
-from config import Config
-from format import Message, MessageType
+from .config import Config
+from .format import Message, MessageType
 
-PUSHPLUS_API_URL = "http://www.pushplus.plus/send"
+PUSHPLUS_API_URL = "https://www.pushplus.plus/send"
 
 
 def build_pushplus_payload(message: Message, chat_title: str) -> tuple[str, str]:

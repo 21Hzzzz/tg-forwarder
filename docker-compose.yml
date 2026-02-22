@@ -1,0 +1,13 @@
+services:
+  app:
+    image: tg-forwarder:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./sessions:/app/sessions
+    stdin_open: true
+    tty: true

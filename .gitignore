@@ -12,10 +12,16 @@ __pycache__/
 
 # ===== Runtime Files =====
 logs/
+sessions/
 *.log
 *.session
 
-# ===== VS Code (可选) =====
+# ===== Tool Caches =====
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ===== VS Code =====
 .vscode/
 
 # ===== OS =====

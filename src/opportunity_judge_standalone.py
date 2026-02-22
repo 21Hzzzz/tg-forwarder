@@ -11,13 +11,14 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from config import load_dotenv
+from dotenv import load_dotenv
 
 
 API_URL = "https://api.openai.com/v1/responses"
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_SYSTEM_PROMPT_FILE = SCRIPT_DIR / "system_prompt.txt"
-DEFAULT_USER_PROMPT_FILE = SCRIPT_DIR / "user_prompt.txt"
+PROJECT_ROOT = SCRIPT_DIR.parent
+DEFAULT_SYSTEM_PROMPT_FILE = SCRIPT_DIR / "prompts" / "system_prompt.txt"
+DEFAULT_USER_PROMPT_FILE = SCRIPT_DIR / "prompts" / "user_prompt.txt"
 
 
 def read_prompt_file(path: Path) -> str:
@@ -88,7 +89,7 @@ def get_input_text(args: argparse.Namespace) -> str:
 
 
 def main() -> int:
-    load_dotenv(".env")
+    load_dotenv(PROJECT_ROOT / ".env")
 
     parser = argparse.ArgumentParser(description="Judge monitored text with prompts from local .txt files.")
     parser.add_argument("--text", help="Text to analyze")
