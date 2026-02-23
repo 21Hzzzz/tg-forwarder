@@ -1,7 +1,9 @@
+import html
 import httpx
 
 from .config import Config
 from .format import Message, MessageType
+
 
 PUSHPLUS_API_URL = "https://www.pushplus.plus/send"
 
@@ -17,9 +19,8 @@ def build_pushplus_payload(message: Message, chat_title: str) -> tuple[str, str]
     title = f"{chat_title} [{type_label}]"
 
     parts = [
-        f"time: {message.time}",
-        f"type: {message.message_type.value}",
-        f"message:\n{message.message or '<empty>'}",
+        f"{message.message or '<empty>'}",
+        f"{message.time}",
     ]
     if message.media_url:
         parts.append(f"media_url: {message.media_url}")
@@ -36,9 +37,7 @@ async def pushplus_send(
     title: str,
     content: str,
 ) -> None:
-    safe_content = (
-        content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-    )
+    safe_content = html.escape(content, quote=False).replace("\n", "<br>")
     payload = {
         "token": cfg.pushplus_token,
         "title": title,

@@ -4,6 +4,7 @@ import traceback
 import httpx
 from telethon import TelegramClient, events
 from telethon.errors import UsernameInvalidError, UsernameNotOccupiedError
+from telethon.utils import get_peer_id
 
 from .config import load_config
 from .format import build_message
@@ -22,22 +23,31 @@ async def main() -> None:
     if asyncio.iscoroutine(start_result):
         await start_result
 
-    try:
-        entity = await client.get_entity(cfg.chat)
-    except (UsernameInvalidError, UsernameNotOccupiedError) as exc:
-        print(f"Invalid TG_CHAT/TG_CHANNEL: {cfg.chat}")
-        traceback.print_exc()
-        raise SystemExit(1) from exc
+    entities = []
+    chat_title_by_id: dict[int, str] = {}
+    for chat in cfg.chats:
+        try:
+            entity = await client.get_entity(chat)
+        except (UsernameInvalidError, UsernameNotOccupiedError) as exc:
+            print(f"Invalid TG_CHATS entry: {chat}")
+            traceback.print_exc()
+            raise SystemExit(1) from exc
+        entities.append(entity)
+        chat_title = getattr(entity, "title", chat)
+        chat_title_by_id[get_peer_id(entity)] = chat_title
 
-    chat_title = getattr(entity, "title", cfg.chat)
-    print(f"Connected. Chat: {chat_title}")
+    print(f"Connected. Chats: {', '.join(chat_title_by_id.values())}")
 
     timeout = httpx.Timeout(cfg.pushplus_timeout)
     async with httpx.AsyncClient(timeout=timeout) as http_client:
-        previous_messages_raw = await client.get_messages(entity, limit=1)
-        if not previous_messages_raw:
-            print("No messages found.")
-        else:
+        for entity in entities:
+            chat_id = get_peer_id(entity)
+            chat_title = chat_title_by_id.get(chat_id, str(chat_id))
+            previous_messages_raw = await client.get_messages(entity, limit=1)
+            if not previous_messages_raw:
+                print(f"No messages found in {chat_title}.")
+                continue
+
             last_message_raw = previous_messages_raw[0]
             last_message = build_message(last_message_raw)
             print(last_message)
@@ -49,11 +59,13 @@ async def main() -> None:
                 content=content,
             )
 
-        @client.on(events.NewMessage(chats=entity))
+        @client.on(events.NewMessage(chats=entities))
         async def handler(event):
             try:
                 latest_message_raw = event.message
                 latest_message = build_message(latest_message_raw)
+                event_chat_id = event.chat_id
+                chat_title = chat_title_by_id.get(event_chat_id, str(event_chat_id))
                 title, content = build_pushplus_payload(latest_message, chat_title)
                 await pushplus_send(
                     http_client,
@@ -68,7 +80,7 @@ async def main() -> None:
         print("Listening for new messages. Press Ctrl+C to exit.")
         await client.run_until_disconnected()
 
-
+ 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
