@@ -1,32 +1,43 @@
-# 安装docker
+# Install Docker
 https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
 
-# 配置项目
+# Setup Project
 git clone https://github.com/21Hzzzz/tg-forwarder.git
 
 cd tg-forwarder
 
-mv .env.example .env
+cp .env.example .env
 
 nano .env
 
-# 第一次登录
-docker compose run --rm --service-ports app
+# Build Image
+docker build -t tg-forwarder:latest .
 
-# 之后长期运行
-docker compose up -d
+# First Login (interactive, enter Telegram code)
+docker run --rm -it --name tg-forwarder-login --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
 
-# 临时进入容器
-docker attach tg-forwarder-app-1
-Ctrl+C会停止容器
-正确退出方式
-Ctrl + P
-Ctrl + Q
+# Run in Background
+docker run -d --name tg-forwarder-app-1 --restart unless-stopped --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
 
-## Required environment variables
+# View Logs
+docker logs -f -t tg-forwarder-app-1
+
+# Stop and Remove
+docker stop tg-forwarder-app-1
+docker rm tg-forwarder-app-1
+
+# Update
+cd tg-forwarder
+git pull
+nano .env
+docker build -t tg-forwarder:latest .
+docker rm -f tg-forwarder-app-1
+docker run -d --name tg-forwarder-app-1 --restart unless-stopped --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
+
+## Required Environment Variables
 
 - `TG_API_ID`
 - `TG_API_HASH`
 - `TG_PHONE` (required, not optional)
-- `TG_CHATS` (comma-separated targets)
+- `FILTER_CONFIG_PATH` (points to JSON containing chat filters)
 - `PUSHPLUS_TOKEN`

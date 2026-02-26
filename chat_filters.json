@@ -1,0 +1,23 @@
+{
+  "_comment": "Use _comment fields as notes. They are ignored by the script.",
+  "chat_filters": [
+    {
+      "_comment": "0富投机之路",
+      "chat": "t.me/journey_of_someone",
+      "mode": "deny",
+      "keywords": [
+        ""
+      ],
+      "case_sensitive": false
+    },
+    {
+      "_comment": "自用推特监控",
+      "chat": "t.me/+P2DNs7ccbIIwOTNh",
+      "mode": "deny",
+      "keywords": [
+        "之前私信我们领取奖励"
+      ],
+      "case_sensitive": false
+    }
+  ]
+}

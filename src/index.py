@@ -1,5 +1,6 @@
 import asyncio
 import traceback
+from typing import Any
 
 import httpx
 from telethon import TelegramClient, events
@@ -9,6 +10,32 @@ from telethon.utils import get_peer_id
 from .config import load_config
 from .format import build_message
 from .push import build_pushplus_payload, pushplus_send
+
+ChatRule = tuple[str, list[str], bool]
+
+
+def _should_push(
+    text: str,
+    mode: str,
+    keywords: list[str],
+    case_sensitive: bool,
+) -> tuple[bool, str | None]:
+    normalized_keywords = []
+    for kw in keywords:
+        token = kw.strip()
+        if token:
+            normalized_keywords.append(token if case_sensitive else token.lower())
+
+    if not normalized_keywords:
+        return True, None
+
+    normalized_text = text if case_sensitive else text.lower()
+    hit = next((kw for kw in normalized_keywords if kw in normalized_text), None)
+
+    if mode == "allow":
+        return hit is not None, hit
+    return hit is None, hit
+
 
 async def main() -> None:
     try:
@@ -23,18 +50,22 @@ async def main() -> None:
     if asyncio.iscoroutine(start_result):
         await start_result
 
-    entities = []
+    entities: list[Any] = []
     chat_title_by_id: dict[int, str] = {}
+    chat_rule_by_id: dict[int, ChatRule] = {}
     for chat in cfg.chats:
         try:
             entity = await client.get_entity(chat)
         except (UsernameInvalidError, UsernameNotOccupiedError) as exc:
-            print(f"Invalid TG_CHATS entry: {chat}")
+            print(f"Invalid chat entry: {chat}")
             traceback.print_exc()
             raise SystemExit(1) from exc
         entities.append(entity)
         chat_title = getattr(entity, "title", chat)
-        chat_title_by_id[get_peer_id(entity)] = chat_title
+        peer_id = get_peer_id(entity)
+        chat_title_by_id[peer_id] = chat_title
+        rule = cfg.chat_filters[chat]
+        chat_rule_by_id[peer_id] = (rule.mode, rule.keywords, rule.case_sensitive)
 
     print(f"Connected. Chats: {', '.join(chat_title_by_id.values())}")
 
@@ -50,8 +81,20 @@ async def main() -> None:
 
             last_message_raw = previous_messages_raw[0]
             last_message = build_message(last_message_raw)
-            print(last_message)
-            title, content = build_pushplus_payload(last_message, chat_title)
+            mode, keywords, case_sensitive = chat_rule_by_id[chat_id]
+            should_push, hit = _should_push(
+                last_message.message,
+                mode,
+                keywords,
+                case_sensitive,
+            )
+            if not should_push:
+                print(
+                    f"[FILTER DROP] chat={chat_title} msg_id={last_message.msg_id} mode={mode} hit={hit}"
+                )
+                continue
+
+            title, content = build_pushplus_payload(chat_title, last_message)
             await pushplus_send(
                 http_client,
                 cfg,
@@ -66,7 +109,23 @@ async def main() -> None:
                 latest_message = build_message(latest_message_raw)
                 event_chat_id = event.chat_id
                 chat_title = chat_title_by_id.get(event_chat_id, str(event_chat_id))
-                title, content = build_pushplus_payload(latest_message, chat_title)
+                mode, keywords, case_sensitive = chat_rule_by_id.get(
+                    event_chat_id,
+                    ("allow", [], False),
+                )
+                should_push, hit = _should_push(
+                    latest_message.message,
+                    mode,
+                    keywords,
+                    case_sensitive,
+                )
+                if not should_push:
+                    print(
+                        f"[FILTER DROP] chat={chat_title} msg_id={latest_message.msg_id} mode={mode} hit={hit}"
+                    )
+                    return
+
+                title, content = build_pushplus_payload(chat_title, latest_message)
                 await pushplus_send(
                     http_client,
                     cfg,

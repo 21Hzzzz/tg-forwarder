@@ -1,53 +1,6 @@
-﻿from __future__ import annotations
-
 import re
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-
-@dataclass
-class Message:
-    msg_id: int
-    time: str
-    message: str
-    media_url: Optional[str] = None
-    media_description: Optional[str] = None
-
-
-def format_time(dt: Optional[datetime]) -> str:
-    if not isinstance(dt, datetime):
-        return "unknown"
-    utc8 = timezone(timedelta(hours=8))
-    return dt.astimezone(utc8).strftime("%Y-%m-%d %H:%M:%S")
-
-
-def extract_media_url(msg: Any) -> Optional[str]:
-    media = getattr(msg, "media", None)
-    webpage = getattr(media, "webpage", None) if media else None
-    return getattr(webpage, "url", None) if webpage else None
-
-
-def extract_media_description(msg: Any) -> Optional[str]:
-    media = getattr(msg, "media", None)
-    webpage = getattr(media, "webpage", None) if media else None
-    return getattr(webpage, "description", None) if webpage else None
-
-
-def is_6551_message(raw: str) -> bool:
-    return "🌟监控到" in raw
-
-
-def build_message(msg: Any) -> Message:
-    raw = msg.raw_text or msg.message or ""
-
-    return Message(
-        msg_id=msg.id,
-        time=format_time(msg.date),
-        message=raw,
-        media_url=extract_media_url(msg),
-        media_description=extract_media_description(msg),
-    )
 
 # 公共头部（前三行）
 HEADER_RE = re.compile(
@@ -58,7 +11,7 @@ HEADER_RE = re.compile(
     re.M | re.X,
 )
 
-# 新推文（正文直接吃到块结束）
+# 1) 新推文（正文直接吃到块结束）
 PAT_NEW_TWEET = re.compile(
     r"""^🌟监控到新推文\n
 你关注的用户:\s*(?P<username>.*?)\(备注:\s*(?P<remark>.*?)\)\s*(?:\([^)]+\))?\n
@@ -68,7 +21,7 @@ PAT_NEW_TWEET = re.compile(
     re.X,
 )
 
-# 新推文回复（用“回帖内容:”作为分隔锚点，回帖吃到块结束）
+# 2) 新推文回复（用“回帖内容:”作为分隔锚点，回帖吃到块结束）
 PAT_NEW_REPLY = re.compile(
     r"""^🌟监控到新推文回复\n
 你关注的用户:\s*(?P<username>.+?)\(备注:\s*(?P<remark>.+?)\)\s*(?:\([^)]+\))?\n
@@ -78,7 +31,7 @@ PAT_NEW_REPLY = re.compile(
     re.X,
 )
 
-# 新关注动态（用户列表吃到块结束）
+# 3) 新关注动态（用户列表吃到块结束）
 PAT_NEW_FOLLOW = re.compile(
     r"""^🌟监控到新关注动态\n
 你关注的用户:\s*(?P<username>.+?)\(备注:\s*(?P<remark>.+?)\)\s*(?:\([^)]+\))?\n
@@ -88,7 +41,7 @@ PAT_NEW_FOLLOW = re.compile(
     re.X,
 )
 
-# 删除推文回复
+# 4) 删除推文回复
 PAT_DELETE_TWEET_REPLY = re.compile(
     r"""^🌟监控到删除推文\n
 你关注的用户:\s*(?P<username>.+?)\(备注:\s*(?P<remark>.+?)\)\s*(?:\([^)]+\))?\n
@@ -98,7 +51,7 @@ PAT_DELETE_TWEET_REPLY = re.compile(
     re.X,
 )
 
-# 删除推文
+# 4) 删除推文
 PAT_DELETE_TWEET = re.compile(
     r"""^🌟监控到删除推文\n
 你关注的用户:\s*(?P<username>.+?)\(备注:\s*(?P<remark>.+?)\)\s*(?:\([^)]+\))?\n
@@ -107,7 +60,7 @@ PAT_DELETE_TWEET = re.compile(
     re.X,
 )
 
-# 新推文引用（引用内容吃到块结束）
+# 5) 新推文引用（引用内容吃到块结束）
 PAT_NEW_QUOTE = re.compile(
     r"""^🌟监控到新推文引用\n
 你关注的用户:\s*(?P<username>.+?)\(备注:\s*(?P<remark>.+?)\)\s*(?:\([^)]+\))?\n
@@ -142,7 +95,7 @@ def _parse_users_block(users_block: str) -> List[str]:
     return re.findall(r"^\s*•\s*([^\n]+)\s*$", users_block, flags=re.M)
 
 
-def parse_message(text: str) -> List[Dict[str, Any]]:
+def parse_monitor_messages_regex(text: str) -> List[Dict[str, Any]]:
     results: List[Dict[str, Any]] = []
 
     for block in _split_blocks(text):
@@ -174,7 +127,7 @@ def parse_message(text: str) -> List[Dict[str, Any]]:
 
             elif event_name == "删除推文回复":
                 item["data"]["parent"] = gd["parent"].strip()
-                item["data"]["reply"] = gd["reply"].strip()
+                item["data"]["reply"] = gd["reply"].strip()   
 
             elif event_name == "删除推文":
                 pass
@@ -209,4 +162,61 @@ def parse_message(text: str) -> List[Dict[str, Any]]:
 
     return results
 
+def build_pushplus_payload(text: str) -> tuple[str, str]:
+    if True:
+        parsed = parse_monitor_messages_regex(text)
 
+        title = f"{parsed[0]['username']} [{parsed[0]['event']}]"
+
+        if parsed[0]["event"] == "新推文":
+            parts = [
+                f"推文内容: {parsed[0]['data']['tweet']}",
+            ]
+        elif parsed[0]["event"] == "新推文回复":
+            parts = [
+                f"上文内容: {parsed[0]['data']['parent']}",
+                f"回帖内容: {parsed[0]['data']['reply']}",
+            ]
+        elif parsed[0]["event"] == "新关注动态":
+            parts = [
+                f"关注用户: {', '.join(parsed[0]['data']['followed_users'])}",
+            ]
+        elif parsed[0]["event"] == "删除推文回复":
+            parts = [
+                f"上文内容: {parsed[0]['data']['parent']}",
+                f"回帖内容: {parsed[0]['data']['reply']}",
+            ]
+        elif parsed[0]["event"] == "删除推文":
+            parts = [
+                f"",
+            ]
+        elif parsed[0]["event"] == "新推文引用":
+            parts = [
+                f"引用内容: {parsed[0]['data']['quote']}",
+            ]
+        else:
+            parts = [
+                f"",
+            ]
+    else:
+        parts = [
+            f"{text}",
+        ]
+
+    content = "\n\n".join(parts)
+    return title, content
+
+
+text="""
+🌟监控到新推文引用
+你关注的用户: Cooker.hl(备注:Cooker.hl)
+用户所属分组: 过年红包
+引用内容: Imagine if it was all a psyop, there was no investigation, 
+
+Zach just wanted to get people to shit their pants 
+
+and come fwd 🤣 https://x.com/zachxbt/status/2026544197269115136
+"""
+
+print(parse_monitor_messages_regex(text))
+print(build_pushplus_payload(text))

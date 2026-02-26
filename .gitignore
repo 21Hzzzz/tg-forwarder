@@ -27,3 +27,10 @@ sessions/
 # ===== OS =====
 .DS_Store
 Thumbs.db
+
+# ===== Others =====
+tg_links.txt
+tg_msgs.txt
+msgs.txt
+.coverage
+htmlcov/
