@@ -17,22 +17,22 @@ docker build -t tg-forwarder:latest .
 docker run --rm -it --name tg-forwarder-login --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
 
 # Run in Background
-docker run -d --name tg-forwarder-app-1 --restart unless-stopped --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
+docker run -d --name tg-forwarder --restart unless-stopped --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
 
 # View Logs
-docker logs -f -t tg-forwarder-app-1
+docker logs -f -t tg-forwarder
 
 # Stop and Remove
-docker stop tg-forwarder-app-1
-docker rm tg-forwarder-app-1
+docker stop tg-forwarder
+docker rm tg-forwarder
 
 # Update
 cd tg-forwarder
 git pull
 nano .env
 docker build -t tg-forwarder:latest .
-docker rm -f tg-forwarder-app-1
-docker run -d --name tg-forwarder-app-1 --restart unless-stopped --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
+docker rm -f tg-forwarder
+docker run -d --name tg-forwarder --restart unless-stopped --env-file .env -v "${PWD}/sessions:/app/sessions" -v "${PWD}/chat_filters.json:/app/chat_filters.json" tg-forwarder:latest
 
 ## Required Environment Variables
 

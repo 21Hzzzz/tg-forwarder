@@ -10,6 +10,8 @@ PUSHPLUS_API_URL = "https://www.pushplus.plus/send"
 PUSHPLUS_MAX_RETRIES = 3
 PUSHPLUS_RETRY_BASE_DELAY_SECONDS = 1.0
 
+def _safe_text(s: object) -> str:
+    return html.escape(str(s), quote=False).replace("\n", "<br>")
 
 def build_pushplus_payload(chat_title: str, message: Message) -> tuple[str, str]:
     if is_6551_message(message.message):
@@ -19,7 +21,7 @@ def build_pushplus_payload(chat_title: str, message: Message) -> tuple[str, str]
 
         if parsed[0]["event"] == "新推文":
             parts = [
-                f"推文内容:\n{parsed[0]['data']['tweet']}",
+                f"{parsed[0]['data']['tweet']}",
             ]
         elif parsed[0]["event"] == "新推文回复":
             parts = [
@@ -54,14 +56,20 @@ def build_pushplus_payload(chat_title: str, message: Message) -> tuple[str, str]
             f"{message.message}",
         ]
 
-    parts.append(f"{message.time}")
+    html_parts = []
+
+    for p in parts:
+        html_parts.append(_safe_text(p))
+
+    html_parts.append(_safe_text(message.time))
 
     if message.media_url:
-        parts.append(f"media_url:\n{message.media_url}")
-    if message.media_description:
-        parts.append(f"media_description:\n{message.media_description}")
+        html_parts.append(f'media_url:<br><a href="{message.media_url}">{message.media_url}</a>')
 
-    content = "\n\n".join(parts)
+    if message.media_description:
+        html_parts.append(_safe_text(f"media_description:\n{message.media_description}"))
+
+    content = "<br><br>".join(html_parts)
     return title, content
 
 
@@ -71,11 +79,10 @@ async def pushplus_send(
     title: str,
     content: str,
 ) -> None:
-    safe_content = html.escape(content, quote=False).replace("\n", "<br>")
     payload = {
         "token": cfg.pushplus_token,
         "title": title,
-        "content": safe_content,
+        "content": content,
         "template": "html",
         "channel": "app",
     }
