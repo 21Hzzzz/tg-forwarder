@@ -2,22 +2,39 @@
   "_comment": "Use _comment fields as notes. They are ignored by the script.",
   "chat_filters": [
     {
-      "_comment": "0富投机之路",
+      "_comment": "投机之路",
       "chat": "t.me/journey_of_someone",
       "mode": "deny",
-      "keywords": [
-        ""
-      ],
+      "keywords": [""],
       "case_sensitive": false
     },
     {
-      "_comment": "自用推特监控",
+      "_comment": "推特监控",
       "chat": "t.me/+P2DNs7ccbIIwOTNh",
       "mode": "deny",
-      "keywords": [
-        "之前私信我们领取奖励"
-      ],
-      "case_sensitive": false
+      "keywords": ["之前私信我们领取奖励", "Day", "#币安安全星期四","GM"],
+      "case_sensitive": true
+    },
+    {
+      "_comment": "方程式新闻 BWEnews",
+      "chat": "t.me/BWEnews",
+      "mode": "deny",
+      "keywords": ["Bitget Listing"],
+      "case_sensitive": true
+    },
+    {
+      "_comment": "方程式-重大行情提醒 Important Price Alerts Only",
+      "chat": "t.me/BWE_Reserved6",
+      "mode": "deny",
+      "keywords": [""],
+      "case_sensitive": true
+    },
+    {
+      "_comment": "6551News",
+      "chat": "t.me/news6551",
+      "mode": "deny",
+      "keywords": [""],
+      "case_sensitive": true
     }
   ]
 }
